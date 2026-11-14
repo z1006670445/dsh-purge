@@ -1,3 +1,34 @@
+# 1.1.98
+
+## 中文
+
+- 版本 **1.1.98**，适配 **DSH 0.2.2-rc.3**。
+- **版本门禁**：`dshTarget` → `0.2.2-rc.3`，`dshTargets` 首位追加 `0.2.2-rc.3`，保留 `0.2.2-rc.1` / `0.2.1-rc.5` / `0.2.1-rc.2`。
+- **复现方式**：rc.3 的 `@deepseek-ai/dsh` 改为随包发布 docs+src，整树 `npm install` 会长时间无输出，因此按包 `npm pack` 抓 42 个运行时包重建 `node_modules/@deepseek-ai`；`dsh-llm-pi-ai` 需要 `@earendil-works/pi-ai@1.3.0`，装上后 #47/#49/#57/#95–#98 才有目标文件。
+- **0.2.2-rc.1 → rc.3 的源码漂移，6 处补齐**（都在 `lib/core.js` 既有补丁里追加 rc.3 变体，旧 pattern 原样保留，不匹配即无操作）：
+  - **#13 沙箱升级放行**：rc.3 的 `approveEscalation` 把三处 `throw new Error(...)` 换成 `new SandboxEscalationError(msg, "SANDBOX_ESCALATION_*")`；新增一组三行 pattern，替换后仍是三行 `// [dsh-purge] escalation bypass` 注释。
+  - **#35 升级永不拒绝**：rc.3 的 `switch (outcome)` 每个分支都改成带错误码的 `SandboxEscalationError`，`cancelled` 分支还多了 `approval.signal?.throwIfAborted();`；新增整段 pattern，重写为 `case "allowed-once": default: return mode;`。
+  - **#18 重复工具提醒**：rc.3 的 `tools/post-execute` 钩子删掉了 `downstream.kind === "block"` 分支，函数体缩成 14 行；按新函数体单独匹配，替换为两行 `// [dsh-purge]` 注释使钩子整体失效。**首版 pattern 把 `apply(ctx)` 的收尾大括号一起吃掉了**，产物在 `export { ... }` 前大括号不闭合，`node --check` 报 `SyntaxError: Unexpected token 'export'`；已把 pattern 收到 `\t});` 为止。
+  - **#62 审批 fail-open**：rc.3 统一用 `approvalDenial(reason, APPROVAL_UNAVAILABLE)` 包装拒绝，`dsh-tools/lib/pipeline.js` 是制表符缩进、`dsh-tools/lib/types/pipeline.js` 是 4 空格单引号孪生；两边各补三组（approval 未注入 / 无 agent / `case "unavailable"`），统一改成 `{ decision: { kind: "allow" }, approvalCancelled: false }`。用户显式 rejected/cancelled 仍然拒绝。
+  - **#30/#31 与 #64/#65 的双写**：`#30/#31` 只把 `if (merged.decision === "deny")` 改写成永假的哨兵条件，`#65` 随后把哨兵改回 `"deny"` 形态，于是第二次点「应用」又重写一遍 hooks 文件。现在 `#65` 的替换保留哨兵形态（同时保留两侧 marker），一次应用即收敛，第二次点击写入 0 个文件。
+  - **#56/#77 rewind 客户端补丁**：rc.3 的 `dsh-client-ui-conversation/lib/client.js` 里 rewind 渲染整段被移除（全仓 `grep -ri rewind` 零命中）。两条补丁标记 `absentOk`，目标代码不存在时计入 skipped，不再刷成 drifted 红条。
+- **rc.3 实测（91 条补丁，干净宿主树）**：5 已应用 / 72 待应用 / 1 漂移（#88）/ 3 自标记跳过（#56/#77/#80）/ 10 无目标（#28/#45/#46/#71/#76/#82/#83/#84/#92/#93：桌面壳与本机 preset 不在 npm 树里）。点应用后：73 条写入 + 5 条本来就在（合计 78 applied）、3 skipped、1 drifted（#76，指向本机 `~/.dsh/.agent-presets` 的用户文件，不属于宿主安装包）、1 missing_file、8 条不适用于当前表面；`patchStatus` 复核 pending 为 0。
+- **#88 的「漂移」是测量链式假象**：它的 pattern 匹配 #87 的产物，而测量读的是未打补丁的 `.dshpurge.bak` 原文；按序真实应用后 #88 正常 applied（73 条写入里包含它）。
+- **语法与幂等校验**：rc.3 树上 47 个被改写的 `.js` 文件逐个 `node --check`，0 失败；连续两次应用，第二次写入 0 个文件；`patchStatus` 复核无待应用残留。
+- **rc.1 零退化**：同一套补丁在 0.2.2-rc.1 上复测，摘要与 1.1.97 一致 —— 4 applied / 75 pending / 4 drifted / 1 self-marked / 7 no-target，仅新增变体的命中计数为 0。
+- 用户 preset 层（`~/.dsh/.agent-presets/**`）不写 `.bak`、revert 时不回拷的既有约束不变；本次测试未修改本机 preset 文件（mtime 保持 11 月 8 日）。
+
+## English
+
+- Version **1.1.98**, adds **DSH 0.2.2-rc.3** support.
+- **Version gate**: `dshTarget` → `0.2.2-rc.3`, and `dshTargets` now starts with `0.2.2-rc.3`; `0.2.2-rc.1`, `0.2.1-rc.5`, `0.2.1-rc.2` are kept.
+- **How rc.3 was reproduced**: 0.2.2-rc.3 ships docs+src inside `@deepseek-ai/dsh` and a whole-tree `npm install` stalls, so the 42 runtime packages were fetched with per-package `npm pack` into `node_modules/@deepseek-ai`; `dsh-llm-pi-ai` needs `@earendil-works/pi-ai@1.3.0` before patches #47/#49/#57/#95–#98 have a target.
+- **Six rc.3 drifts fixed**, each as an extra pattern/replace pair inside the existing patch (old variants kept; a non-matching entry is a no-op): #13 and #35 `SandboxEscalationError` with error codes (plus `approval.signal?.throwIfAborted()`), #18 the shortened `tools/post-execute` hook (the first attempt ate the closing brace of `apply(ctx)` and broke ESM parsing; the pattern now stops at `\t});`), #62 `approvalDenial(...)` in both `pipeline.js` twins, #56/#77 rewind removed upstream (`absentOk`), and the #30/#31 ↔ #64/#65 hook rewrite now converges in one apply.
+- **Measured on a clean rc.3 tree (91 patches)**: 5 applied / 72 pending / 1 drifted (#88) / 3 self-marked (#56/#77/#80) / 10 no-target. After Apply: 73 written + 5 already (78 applied), 3 skipped, 1 drifted (#76, a machine-local `~/.dsh/.agent-presets` file), 1 missing preset, 8 not applicable; `patchStatus` shows pending 0.
+- **#88's drift is a measurement chain artifact**: it matches #87's output while measurement reads the unpatched `.dshpurge.bak`; in the real ordered apply it lands.
+- **Verification**: 47 rewritten `.js` files pass `node --check` (0 failures); a second Apply writes 0 files; `patchStatus` shows no remaining work.
+- **No regression on rc.1**: identical summary to 1.1.97 — 4 applied / 75 pending / 4 drifted / 1 self-marked / 7 no-target; only the new variants' hit counts are 0.
+
 # 1.1.97
 
 ## 中文
