@@ -1,3 +1,22 @@
+# 1.1.99
+
+## 中文
+
+- 版本 **1.1.99**，适配 **DSH 0.2.2-rc.5**。
+- **版本门禁**：`dshTarget` → `0.2.2-rc.5`，`dshTargets` 首位加入 `0.2.2-rc.5`，保留 `0.2.2-rc.3` / `0.2.2-rc.1` / `0.2.1-rc.5` / `0.2.1-rc.2`。
+- **rc.3 → rc.5 源码差异**：65 个文件变更、4 个新增；被补丁覆盖且内容变动的只有 3 个（`dsh-llm-deepseek/lib/index.js`、`dsh-repeat-tool-reminder/lib/index.js`、`dsh-tool-web/lib/index.js`），#18 / #29 / #69 / #72 的 pattern 在 rc.5 上仍命中，无需改写。
+- **新增 #94 REFUSAL_STOP_NORMAL**：rc.5 在 `dsh-llm-deepseek` 里加了 refusal 通道 —— `delta.stop_reason === "refusal"` 会构造 `LlmError(..., "CONTENT_REFUSED")` 并在流末尾 `throw`。补丁把该分支改写为 `reason = { kind: "stop" }`，refusal 按正常结束处理；`dsh-repeat-tool-reminder` 的 `CONTENT_REFUSED` 错误码由 #18 一并失效。
+- **验证**：43 个 `@deepseek-ai/*@0.2.2-rc.5` 重建 `node_modules` 后连跑两次 apply —— 首轮 74 applied / 5 already / 1 drifted（用户 preset #76）、次轮 79 already，幂等；改写文件 `node --check` 全通过。
+- **升级提醒**：DSH 更新会把 `app.asar` 重新落盘，Electron 优先读归档，需退出 → 把 `app.asar` 改名 → 再启动，补丁才会生效。
+
+## English
+
+- Version **1.1.99**, targeting **DSH 0.2.2-rc.5**.
+- Version gate: `dshTarget` → `0.2.2-rc.5`; `dshTargets` prepends it and keeps the previous four.
+- rc.3 → rc.5: 65 changed + 4 added files; only three patched JS files moved (`dsh-llm-deepseek`, `dsh-repeat-tool-reminder`, `dsh-tool-web`), and the existing #18 / #29 / #69 / #72 patterns still match.
+- New **#94 REFUSAL_STOP_NORMAL**: rc.5 raises `LlmError(..., "CONTENT_REFUSED")` when `stop_reason === "refusal"`; the patch routes that branch to `reason = { kind: "stop" }` so a refusal ends the turn normally.
+- Verified on a freshly rebuilt rc.5 tree: 74 applied / 5 already / 1 drifted (#76, user preset) on the first pass, fully idempotent on the second, `node --check` clean.
+- Reminder: a DSH update restores `app.asar`; rename it after quitting so the unpacked tree is used.
 # 1.1.98
 
 ## 中文
