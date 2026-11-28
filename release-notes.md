@@ -1,3 +1,32 @@
+# 1.2.0
+
+## 中文
+
+- 版本 **1.2.0**，适配 **DSH 0.2.3-alpha.2**。
+- **版本门禁**：`dshTarget` → `0.2.3-alpha.2`，`dshTargets` 首位加入 alpha.2，保留 `0.2.2-rc.5` / `0.2.2-rc.3` / `0.2.2-rc.1` / `0.2.1-rc.5` / `0.2.1-rc.2`。
+- **rc.5 → alpha.2 的四处结构性改写**：
+  - `dsh-system-prompt` 的 `assemble` 重写：waterfall 结果先包成 `presentation` 对象，`completeSection` 直接覆盖 `presentation.sections`（旧版是 `if (completeSection === void 0 && !runtimeContextSuppressed) return transformed;`）。
+  - `in-history` 判定从 `dsh-agent-loop` 搬到 `dsh-llm-deepseek` 的 `serialize`：`const inHistory = model?.systemPromptUpdate === "in-history";`。
+  - run_code 的审批/沙箱文案迁进 `dsh-tool-executor-ptc/lib/_chunks/ptc-calls-<hash>.js` 与 `lib/types/ptc.js`，入口 `lib/index.js` 已无这些字符串。
+  - `dsh-agent-loop.step()` 不再自己 `renderPrompt(assembly)`，系统提示段落在 `dsh-system-prompt` 内成形。
+- **补丁改动**：
+  - #40 新增 alpha.2 variant：`dsh-purge*` 段留在最前，`complete` 段只替换官方同名段。
+  - #55 目标文件加 `llm-deepseek`，新增 `inHistory = false` variant。
+  - #72 新增 alpha.2 的单行 `if/else` variant（`else historySystem = [historySystem, text].filter(Boolean).join("\n\n");`）。
+  - #60 目标文件动态展开：`dsh-tool-executor-ptc/lib/index.js` + `lib/types/ptc.js` + `lib/_chunks/*.js`（chunk 名带哈希，每次发布都变，改成目录扫描）。
+  - #87 挂载点迁到 `dsh-system-prompt` 的 `orderTools(...)` 之前，用段列表头尾比对；写入时同时带 `[dsh-purge-88]`，链尾 #88 在 alpha.2 上按已生效收口。
+- **验证**：118 个 `@deepseek-ai/*@0.2.3-alpha.2` 重建 `node_modules` 后连跑两次 apply —— 首轮 73 applied / 6 already / 1 drifted（用户 preset #76）、次轮 79 already，幂等；53 个改写文件（其中 43 个 JS）`node --check` 全通过。
+- **升级提醒**：DSH 更新会把 `app.asar` 重新落盘，Electron 优先读归档，需退出 → 把 `app.asar` 改名 → 再启动，补丁才会生效。
+
+## English
+
+- Version **1.2.0**, targeting **DSH 0.2.3-alpha.2**.
+- Version gate: `dshTarget` → `0.2.3-alpha.2`; `dshTargets` prepends it and keeps the previous five.
+- Four structural rewrites from rc.5 to alpha.2: `assemble` now builds a `presentation` object and `completeSection` overwrites `presentation.sections`; the `in-history` decision moved into `dsh-llm-deepseek.serialize`; run_code approval strings moved into `lib/_chunks/ptc-calls-<hash>.js` plus `lib/types/ptc.js`; `dsh-agent-loop.step()` no longer renders the prompt itself.
+- Patch changes: #40 gains an alpha.2 variant that keeps `dsh-purge*` sections first; #55 now also targets `llm-deepseek`; #72 gains the single-line alpha.2 `if/else` variant; #60 expands its target files over the chunk directory; #87 moves to `dsh-system-prompt` and closes #88 through its marker.
+- Verified on a freshly rebuilt alpha.2 tree: 73 applied / 6 already / 1 drifted (#76, user preset) on the first pass, 79 already on the second, and `node --check` clean across 43 rewritten JS files.
+- Reminder: a DSH update restores `app.asar`; rename it after quitting so the unpacked tree is used.
+
 # 1.1.99
 
 ## 中文
